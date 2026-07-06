@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARM Enterprise — 2026-07迭代 代码评审报告</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                         "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+            background: #f0f2f5; color: #333; line-height: 1.6; padding: 24px;
+        }
+        .report-container {
+            max-width: 1400px; margin: 0 auto; background: #fff;
+            border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow: hidden;
+        }
+        .report-header {
+            background: linear-gradient(135deg, #1a73e8 0%, #1557b0 100%);
+            color: #fff; padding: 32px 40px;
+        }
+        .report-header h1 { font-size: 26px; font-weight: 600; margin-bottom: 8px; letter-spacing: 0.5px; }
+        .report-header .subtitle { font-size: 14px; opacity: 0.85; }
+        .report-meta { display: flex; flex-wrap: wrap; gap: 24px; margin-top: 20px; font-size: 14px; }
+        .report-meta .meta-item { display: flex; align-items: center; gap: 6px; }
+        .report-meta .meta-label { opacity: 0.75; }
+        .report-meta .meta-value { font-weight: 500; }
+
+        .summary-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px; padding: 28px 40px; border-bottom: 1px solid #e8e8e8;
+        }
+        .summary-card {
+            display: flex; align-items: center; gap: 14px;
+            padding: 18px 20px; border-radius: 8px; background: #fafafa;
+            border: 1px solid #f0f0f0; transition: transform 0.15s;
+        }
+        .summary-card:hover { transform: translateY(-1px); }
+        .summary-card .card-icon {
+            width: 44px; height: 44px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; font-weight: 700; flex-shrink: 0;
+        }
+        .summary-card .card-info .card-count { font-size: 26px; font-weight: 700; line-height: 1.2; }
+        .summary-card .card-info .card-label { font-size: 13px; color: #888; margin-top: 2px; }
+
+        .card-block .card-icon { background: #fff1f0; color: #cf1322; }
+        .card-block .card-count { color: #cf1322; }
+        .card-suggest .card-icon { background: #fff7e6; color: #d46b08; }
+        .card-suggest .card-count { color: #d46b08; }
+        .card-optional .card-icon { background: #f6ffed; color: #389e0d; }
+        .card-optional .card-count { color: #389e0d; }
+        .card-total .card-icon { background: #e6f7ff; color: #096dd9; }
+        .card-total .card-count { color: #096dd9; }
+
+        .report-body { padding: 32px 40px 40px; }
+        .section { margin-bottom: 40px; }
+        .section:last-child { margin-bottom: 0; }
+        .section-title {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 20px; font-weight: 600; padding-bottom: 14px;
+            margin-bottom: 20px; border-bottom: 2px solid #1a73e8; color: #1a1a1a;
+        }
+        .section-title .section-num {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 32px; height: 32px; background: #1a73e8; color: #fff;
+            border-radius: 6px; font-size: 15px; font-weight: 700; flex-shrink: 0;
+        }
+        .section-title .section-num.issue { background: #cf1322; }
+
+        .table-wrapper { overflow-x: auto; border-radius: 6px; border: 1px solid #e8e8e8; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 900px; }
+        thead { background: #fafafa; }
+        thead th {
+            padding: 12px 14px; text-align: left; font-weight: 600;
+            color: #555; font-size: 13px; white-space: nowrap;
+            border-bottom: 2px solid #e8e8e8; user-select: none;
+        }
+        tbody td { padding: 12px 14px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+        tbody tr:hover { background: #fafbff; }
+        tbody tr:last-child td { border-bottom: none; }
+
+        .badge {
+            display: inline-block; padding: 2px 10px; border-radius: 10px;
+            font-size: 12px; font-weight: 600; white-space: nowrap;
+        }
+        .badge-block { background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; }
+        .badge-suggest { background: #fff7e6; color: #d46b08; border: 1px solid #ffd591; }
+        .badge-optional { background: #f6ffed; color: #389e0d; border: 1px solid #b7eb8f; }
+
+        .status-fixed { color: #389e0d; font-weight: 600; }
+        .status-pending { color: #cf1322; font-weight: 600; }
+
+        .col-seq { width: 48px; text-align: center; color: #999; font-size: 13px; }
+        .col-level { width: 80px; }
+        .col-status { width: 90px; text-align: center; }
+        .col-reviewer { width: 90px; text-align: center; }
+        .col-owner { width: 90px; text-align: center; }
+
+        .file-path {
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 12px; color: #1a73e8; background: #f0f5ff;
+            padding: 1px 6px; border-radius: 3px; white-space: nowrap;
+        }
+        .commit-tag {
+            display: inline-block; font-size: 11px; color: #888;
+            background: #f5f5f5; padding: 1px 6px; border-radius: 3px;
+            font-family: "SFMono-Regular", Consolas, monospace;
+        }
+
+        .empty-state { text-align: center; padding: 40px 20px; color: #999; }
+        .empty-state .empty-icon { font-size: 40px; margin-bottom: 10px; }
+        .empty-state p { font-size: 14px; }
+
+        .report-footer {
+            padding: 20px 40px; border-top: 1px solid #e8e8e8;
+            font-size: 13px; color: #999; text-align: center;
+        }
+
+        /* 评审范围提交列表 */
+        .scope-list { margin-bottom: 24px; padding: 16px 20px; background: #fafbff; border-radius: 6px; border: 1px solid #e6f0ff; }
+        .scope-list h4 { font-size: 13px; color: #1a73e8; margin-bottom: 10px; }
+        .scope-list .commit-item {
+            font-size: 13px; padding: 4px 0; color: #555;
+            display: flex; gap: 10px; align-items: baseline;
+        }
+        .scope-list .commit-hash {
+            font-family: "SFMono-Regular", Consolas, monospace;
+            font-size: 12px; color: #1a73e8; min-width: 90px;
+        }
+
+        .overall-assessment {
+            margin-top: 32px; padding: 20px 24px;
+            background: #f6ffed; border-left: 4px solid #389e0d;
+            border-radius: 4px; font-size: 14px;
+        }
+        .overall-assessment strong { color: #389e0d; }
+
+        @media print {
+            body { background: #fff; padding: 0; }
+            .report-container { box-shadow: none; border-radius: 0; }
+            .report-header { background: #1a73e8 !important; -webkit-print-color-adjust: exact; }
+            .summary-card:hover { transform: none; }
+            tbody tr:hover { background: transparent; }
+            .badge-block, .badge-suggest, .badge-optional { -webkit-print-color-adjust: exact; }
+        }
+        @media (max-width: 768px) {
+            .report-header { padding: 20px; }
+            .report-header h1 { font-size: 20px; }
+            .report-meta { flex-direction: column; gap: 8px; }
+            .summary-section { grid-template-columns: repeat(2, 1fr); padding: 20px; }
+            .report-body { padding: 20px; }
+            .report-footer { padding: 16px 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="report-container">
+
+        <!-- ==================== 头部 ==================== -->
+        <div class="report-header">
+            <h1>ARM Enterprise — 代码评审报告</h1>
+            <div class="subtitle">迭代版本 v8.39.10 &nbsp;|&nbsp; 技术栈 Spring Boot 2.7 + MyBatis-Plus + JSP</div>
+            <div class="report-meta">
+                <div class="meta-item">
+                    <span class="meta-label">评审周期：</span>
+                    <span class="meta-value">2026年7月</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">评审日期：</span>
+                    <span class="meta-value">2026-07-06</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">评审人：</span>
+                    <span class="meta-value">hehaifeng</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">评审范围：</span>
+                    <span class="meta-value">hehaifeng 7月全部提交（4个commit）</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 统计卡片 ==================== -->
+        <div class="summary-section">
+            <div class="summary-card card-block">
+                <div class="card-icon">🔴</div>
+                <div class="card-info">
+                    <div class="card-count">0</div>
+                    <div class="card-label">阻断项（必须修改）</div>
+                </div>
+            </div>
+            <div class="summary-card card-suggest">
+                <div class="card-icon">🟡</div>
+                <div class="card-info">
+                    <div class="card-count">2</div>
+                    <div class="card-label">建议项（建议修改）</div>
+                </div>
+            </div>
+            <div class="summary-card card-optional">
+                <div class="card-icon">🟢</div>
+                <div class="card-info">
+                    <div class="card-count">4</div>
+                    <div class="card-label">可选项（优化方向）</div>
+                </div>
+            </div>
+            <div class="summary-card card-total">
+                <div class="card-icon">📋</div>
+                <div class="card-info">
+                    <div class="card-count">6</div>
+                    <div class="card-label">评审项总计</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 正文 ==================== -->
+        <div class="report-body">
+
+            <!-- 评审范围：提交列表 -->
+            <div class="scope-list">
+                <h4>📌 评审提交列表</h4>
+                <div class="commit-item">
+                    <span class="commit-hash">60c83f5</span>
+                    <span>7149 【123baby】物流码轨迹表增加失效日期计算逻辑</span>
+                </div>
+                <div class="commit-item">
+                    <span class="commit-hash">5d1aae8</span>
+                    <span>41268 【7034】企业自编码补录接口，不同物流码传同样的企业自编码，应该要加校验</span>
+                </div>
+                <div class="commit-item">
+                    <span class="commit-hash">92f8f51</span>
+                    <span>41257 【历史问题】参数配置为否时入库单收货详情界面计划分货数量不正确</span>
+                </div>
+                <div class="commit-item">
+                    <span class="commit-hash">435723d</span>
+                    <span>41247【需求问题】【7177】分货计划框提示1000仓不是门店</span>
+                </div>
+            </div>
+
+            <!-- 一、需求清单 -->
+            <div class="section">
+                <div class="section-title">
+                    <span class="section-num">一</span> 需求清单
+                </div>
+                <div class="empty-state">
+                    <div class="empty-icon">✅</div>
+                    <p>本次评审的 4 个提交均为功能增强与 Bug 修复，不涉及需求遗漏或需求理解偏差问题</p>
+                </div>
+            </div>
+
+            <!-- 二、问题单 -->
+            <div class="section">
+                <div class="section-title">
+                    <span class="section-num issue">二</span> 问题单
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="col-seq">#</th>
+                                <th class="col-level">等级</th>
+                                <th>问题标题</th>
+                                <th>问题描述</th>
+                                <th>修改建议</th>
+                                <th class="col-reviewer">评审人</th>
+                                <th class="col-owner">责任人</th>
+                                <th class="col-status">是否修改</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 建议项 #1 -->
+                            <tr>
+                                <td class="col-seq">1</td>
+                                <td class="col-level"><span class="badge badge-suggest">建议</span></td>
+                                <td>失效日期计算逻辑重复</td>
+                                <td>
+                                    <span class="file-path">InvGoodsLogisticsCodeServiceImpl.java:5579</span> 和
+                                    <span class="file-path">InvGoodsLogisticsCodeServiceImpl.java:5650</span><br>
+                                    <span class="commit-tag">60c83f5</span><br>
+                                    两处新增的失效日期计算逻辑完全一致（判空 + 调 calculateEndDate），代码重复，后续维护时容易漏改。
+                                </td>
+                                <td>提取私有方法：<br><code>private LocalDateTime resolveEndDate(BatchItem item, Long validDate, String validDateUnit)</code><br>统一处理 endDate 的解析逻辑，两处调用点改为调用此方法。</td>
+                                <td class="col-reviewer">hehaifeng</td>
+                                <td class="col-owner">hehaifeng</td>
+                                <td class="col-status status-pending">否</td>
+                            </tr>
+                            <!-- 建议项 #2 -->
+                            <tr>
+                                <td class="col-seq">2</td>
+                                <td class="col-level"><span class="badge badge-suggest">建议</span></td>
+                                <td>错误码使用风格不一致</td>
+                                <td>
+                                    <span class="file-path">InvAppInterface.java:10294</span><br>
+                                    <span class="commit-tag">5d1aae8</span><br>
+                                    新增的自编码重复校验使用了 <code>BodyContext.RESULT_CODE_FAIL</code>，而同一方法内物流码为空的校验使用了 <code>ApiConstant.PARAM_IS_NULL</code>。两种错误均属于参数校验类错误，错误码不统一。
+                                </td>
+                                <td>建议将自编码重复校验的错误码改为 <code>ApiConstant.PARAM_IS_NULL</code> 或项目中统一的参数校验错误码，保持同一方法内的错误码风格一致。</td>
+                                <td class="col-reviewer">hehaifeng</td>
+                                <td class="col-owner">hehaifeng</td>
+                                <td class="col-status status-pending">否</td>
+                            </tr>
+                            <!-- 可选项 #3 -->
+                            <tr>
+                                <td class="col-seq">3</td>
+                                <td class="col-level"><span class="badge badge-optional">可选</span></td>
+                                <td>calculateEndDate 方法缺少 null 参数保护</td>
+                                <td>
+                                    <span class="file-path">InvGoodsLogisticsCodeServiceImpl.java:6622</span><br>
+                                    <span class="commit-tag">60c83f5</span><br>
+                                    新增的两处调用点在 <code>startDate</code> 非 null 时直接调用 <code>calculateEndDate(startDate, validDate, validDateUnit)</code>，但未验证 <code>validDate</code> 和 <code>validDateUnit</code> 是否为 null。虽上游数据已有保证，但方法本身缺少防御性校验。
+                                </td>
+                                <td>在 <code>calculateEndDate</code> 方法内部增加参数 null 判断，若 <code>validDate</code> 或 <code>validDateUnit</code> 为 null 则直接返回 null，避免 NPE。</td>
+                                <td class="col-reviewer">hehaifeng</td>
+                                <td class="col-owner">hehaifeng</td>
+                                <td class="col-status status-pending">否</td>
+                            </tr>
+                            <!-- 可选项 #4 -->
+                            <tr>
+                                <td class="col-seq">4</td>
+                                <td class="col-level"><span class="badge badge-optional">可选</span></td>
+                                <td>自编码重复校验错误提示可更具体</td>
+                                <td>
+                                    <span class="file-path">InvAppInterface.java:10293</span><br>
+                                    <span class="commit-tag">5d1aae8</span><br>
+                                    当前错误消息为固定文本"不同的物流码中存在相同的自编码"，未指出具体哪些物流码或自编码存在重复，调用方排查不便。
+                                </td>
+                                <td>在错误消息中拼接重复的自编码值，如：<br><code>"以下自编码存在重复：" + String.join("、", duplicateCodes)</code><br>帮助调用方快速定位问题数据。</td>
+                                <td class="col-reviewer">hehaifeng</td>
+                                <td class="col-owner">hehaifeng</td>
+                                <td class="col-status status-pending">否</td>
+                            </tr>
+                            <!-- 可选项 #5 -->
+                            <tr>
+                                <td class="col-seq">5</td>
+                                <td class="col-level"><span class="badge badge-optional">可选</span></td>
+                                <td>InvOrderGoodsDetail.officeType 缺少 @TableField 防御注解</td>
+                                <td>
+                                    <span class="file-path">InvOrderGoodsDetail.java:206</span><br>
+                                    <span class="commit-tag">435723d</span><br>
+                                    新增的 <code>officeType</code> 字段来自 SQL JOIN 而非实体表字段。同文件中已有多个非表字段加了 <code>@TableField(exist = false)</code> 注解（第85/90/95/152/162/167/214/317行）。虽然 <code>deptId</code>、<code>deptCode</code> 也未加注解，但建议统一加上以增强防御性，避免未来 BaseMapper CRUD 操作误包含此字段。
+                                </td>
+                                <td>在 <code>officeType</code> 字段上增加 <code>@TableField(exist = false)</code> 注解，与同类中其他非表字段保持一致。</td>
+                                <td class="col-reviewer">hehaifeng</td>
+                                <td class="col-owner">hehaifeng</td>
+                                <td class="col-status status-pending">否</td>
+                            </tr>
+                            <!-- 可选项 #6 -->
+                            <tr>
+                                <td class="col-seq">6</td>
+                                <td class="col-level"><span class="badge badge-optional">可选</span></td>
+                                <td>CURRENCY_THREE 常量命名不直观</td>
+                                <td>
+                                    <span class="file-path">InvOrderGoodsDetailService.java:516</span><br>
+                                    <span class="commit-tag">435723d</span><br>
+                                    代码中使用 <code>InvConstants.CURRENCY_THREE</code> 来判断机构类型是否为"门店"。该常量名称为"币种三"，但实际含义为"门店类型"，命名与业务含义不匹配，容易误导后续维护人员。此常量非本次引入，但本次新增了使用。
+                                </td>
+                                <td>建议后续重构时将 <code>CURRENCY_THREE</code> 重命名为 <code>OFFICE_TYPE_STORE</code> 或 <code>OFFICE_TYPE_SHOP</code>，并全局替换所有引用点（全项目约 10+ 处）。</td>
+                                <td class="col-reviewer">hehaifeng</td>
+                                <td class="col-owner">hehaifeng</td>
+                                <td class="col-status status-pending">否</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 整体评价 -->
+            <div class="overall-assessment">
+                <strong>整体评价：通过</strong><br><br>
+                本次评审 4 个提交，涉及 inv 模块的物流码、企业自编码、入库单、分货计划等业务。代码整体质量良好：<br>
+                ✅ 分层规范：Service 层处理业务逻辑，XML 参数使用 <code>#{}</code> 参数化<br>
+                ✅ 空指针防护：<code>null != batchItem.getEndDate()</code> 判空链完整<br>
+                ✅ 事务与异常：未见空 catch 块，日志记录完整<br>
+                ✅ 代码可读性：变量命名清晰，业务注释到位<br>
+                ⚠️ 0 个阻断项，2 个建议项，4 个可选项<br>
+                建议处理 2 个建议项后合并。
+            </div>
+
+        </div>
+
+        <!-- ==================== 底部 ==================== -->
+        <div class="report-footer">
+            本报告由 ARM Enterprise 代码评审流程自动生成 &nbsp;|&nbsp; 评审规范依据 CODE_REVIEW.md &nbsp;|&nbsp; 生成时间 2026-07-06
+        </div>
+
+    </div>
+</body>
+</html>
