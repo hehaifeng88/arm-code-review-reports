@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>代码评审报告 - 需求7153 - 2026-07-10</title>
+<style>
+:root {
+    --red: #d32f2f; --red-bg: #ffebee; --red-border: #ef9a9a;
+    --yellow: #f57f17; --yellow-bg: #fff8e1; --yellow-border: #ffe082;
+    --green: #2e7d32; --green-bg: #e8f5e9; --green-border: #a5d6a7;
+    --gray: #616161; --border: #e0e0e0; --code-bg: #263238; --code-text: #eeffff;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; background:#f5f5f5; color:#333; line-height:1.6; }
+.container { max-width:1100px; margin:0 auto; padding:32px 20px; }
+
+/* Header */
+.header { background:#fff; border:1px solid var(--border); border-radius:8px; padding:32px; margin-bottom:24px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+.header h1 { font-size:24px; color:#212121; margin-bottom:16px; }
+.header h1 .req-tag { font-size:13px; font-weight:400; color:#1565c0; background:#e3f2fd; padding:2px 10px; border-radius:12px; margin-left:10px; vertical-align:middle; }
+.header-meta { display:grid; grid-template-columns:100px 1fr; gap:8px 24px; font-size:14px; color:var(--gray); }
+.header-meta dt { font-weight:600; color:#555; }
+.header-meta dd { color:#333; }
+.header-meta dd.sha { font-family:"SF Mono","Consolas",monospace; font-size:13px; }
+
+/* Summary Cards */
+.summary-cards { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:24px; }
+.summary-card { background:#fff; border:1px solid var(--border); border-radius:8px; padding:20px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+.summary-card .count { font-size:36px; font-weight:700; margin-bottom:4px; }
+.summary-card .label { font-size:14px; color:var(--gray); }
+.summary-card.level-block { border-top:3px solid var(--red); }
+.summary-card.level-block .count { color:var(--red); }
+.summary-card.level-warn { border-top:3px solid var(--yellow); }
+.summary-card.level-warn .count { color:var(--yellow); }
+.summary-card.level-opt { border-top:3px solid var(--green); }
+.summary-card.level-opt .count { color:var(--green); }
+
+/* Section */
+.section { background:#fff; border:1px solid var(--border); border-radius:8px; margin-bottom:24px; box-shadow:0 1px 3px rgba(0,0,0,.06); overflow:hidden; }
+.section-title { font-size:18px; font-weight:600; padding:18px 24px; display:flex; align-items:center; gap:10px; background:#fafafa; border-bottom:1px solid var(--border); }
+.section-title .badge { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%; font-size:14px; font-weight:700; color:#fff; }
+.section-body { padding:24px; }
+
+/* Issue Cards */
+.issue { border:1px solid; border-radius:6px; padding:18px 20px; margin-bottom:14px; }
+.issue:last-child { margin-bottom:0; }
+.issue.level-block { border-color:var(--red-border); background:var(--red-bg); }
+.issue.level-warn { border-color:var(--yellow-border); background:var(--yellow-bg); }
+.issue.level-opt { border-color:var(--green-border); background:var(--green-bg); }
+.issue-header { display:flex; align-items:flex-start; gap:10px; margin-bottom:10px; flex-wrap:wrap; }
+.issue-tag { font-size:12px; font-weight:700; padding:2px 8px; border-radius:4px; color:#fff; flex-shrink:0; }
+.tag-block { background:var(--red); }
+.tag-warn { background:var(--yellow); }
+.tag-opt { background:var(--green); }
+.issue-title { font-weight:600; font-size:15px; line-height:1.4; flex:1; min-width:200px; }
+.issue-location { font-family:"SF Mono","Consolas",monospace; font-size:12px; color:#1565c0; background:rgba(21,101,192,.08); padding:2px 8px; border-radius:4px; white-space:nowrap; }
+.issue-category { font-size:11px; color:#888; background:#f0f0f0; padding:1px 6px; border-radius:3px; }
+.issue-classify { font-size:13px; color:#666; padding-left:28px; margin-bottom:8px; }
+.issue-classify span { font-weight:600; color:#333; background:#e8eaf6; padding:2px 10px; border-radius:4px; }
+.issue-desc { font-size:14px; color:#555; margin-bottom:12px; padding-left:28px; }
+.issue-desc p { margin-bottom:6px; }
+.issue-desc ul { margin:8px 0 0 20px; }
+.issue-desc code { font-family:"SF Mono","Consolas",monospace; font-size:12px; background:rgba(0,0,0,.06); padding:1px 6px; border-radius:3px; }
+.issue-suggestion { font-size:14px; padding-left:28px; }
+.issue-suggestion strong { color:#333; }
+
+/* Code Block */
+.code-block { background:var(--code-bg); color:var(--code-text); padding:16px 20px; border-radius:6px; font-family:"SF Mono","Consolas",monospace; font-size:13px; line-height:1.5; overflow-x:auto; margin:10px 0 10px 0; }
+.code-line { display:block; padding:1px 0; }
+.code-line.hl { background:rgba(255,82,82,.25); margin:0 -20px; padding-left:20px; padding-right:20px; }
+.code-cm { color:#89ddff; }
+.code-kw { color:#c792ea; font-style:italic; }
+.code-str { color:#c3e88d; }
+.code-fn { color:#82aaff; }
+
+/* File List */
+.file-list { list-style:none; padding:0; }
+.file-list li { padding:6px 0; font-family:"SF Mono","Consolas",monospace; font-size:13px; color:#555; display:flex; align-items:baseline; gap:8px; }
+.file-list .file-change { font-size:11px; font-weight:600; padding:1px 6px; border-radius:3px; flex-shrink:0; }
+.file-change.mod { background:#fff3e0; color:#e65100; }
+.file-change.add { background:#e8f5e9; color:#2e7d32; }
+
+/* Rating */
+.overall-rating { display:flex; align-items:flex-start; gap:16px; padding:20px 24px; border-radius:6px; background:#fff3e0; border:1px solid #ffcc80; }
+.rating-badge { font-size:15px; font-weight:700; padding:6px 16px; border-radius:20px; background:#ff9800; color:#fff; white-space:nowrap; }
+.rating-desc { font-size:14px; color:#555; }
+
+/* Dimension Grid */
+.dimension-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:12px; margin-bottom:20px; }
+.dimension { padding:12px 16px; border-radius:6px; background:#fafafa; border:1px solid #eee; }
+.dimension-name { font-weight:600; font-size:13px; color:#333; margin-bottom:4px; }
+.dimension .grade { font-size:12px; font-weight:600; padding:2px 8px; border-radius:10px; display:inline-block; }
+.grade-good { background:#e8f5e9; color:#2e7d32; }
+.grade-fix { background:#fff3e0; color:#e65100; }
+
+/* Footer */
+.footer { text-align:center; font-size:13px; color:#999; padding:16px 0; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- ==================== Header ==================== -->
+<div class="header">
+    <h1>代码评审报告<span class="req-tag">需求 7153</span></h1>
+    <dl class="header-meta">
+        <dt>需求描述</dt><dd>【宏恩创达】商品资料查询、内部订货单、批发销售单需要支持查看商品档案的图片</dd>
+        <dt>评审人</dt><dd>hehaifeng</dd>
+        <dt>责任人</dt><dd>denglianjie</dd>
+        <dt>评审日期</dt><dd>2026-07-10</dd>
+        <dt>提交 SHA</dt><dd class="sha">2b7482c3601</dd>
+        <dt>提交日期</dt><dd>2026-07-09 09:36</dd>
+        <dt>变更规模</dt><dd>9 个文件，+413 / -12 行</dd>
+    </dl>
+</div>
+
+<!-- ==================== Summary Cards ==================== -->
+<div class="summary-cards">
+    <div class="summary-card level-block">
+        <div class="count">2</div>
+        <div class="label">🔴 阻断项</div>
+    </div>
+    <div class="summary-card level-warn">
+        <div class="count">4</div>
+        <div class="label">🟡 建议项</div>
+    </div>
+    <div class="summary-card level-opt">
+        <div class="count">2</div>
+        <div class="label">🟢 可选项</div>
+    </div>
+</div>
+
+<!-- ==================== Changed Files ==================== -->
+<div class="section">
+    <div class="section-title">变更文件清单</div>
+    <div class="section-body">
+        <ul class="file-list">
+            <li><span class="file-change mod">M</span> arm-web/.../goods/dao/GoodsBaseDao.java (+8/-1)</li>
+            <li><span class="file-change mod">M</span> arm-web/.../goods/service/GoodsBaseService.java (+11)</li>
+            <li><span class="file-change mod">M</span> arm-web/.../goods/web/GoodsBaseController.java (+16)</li>
+            <li><span class="file-change mod">M</span> arm-web/.../mapper/modules/goods/GoodsBaseDao.xml (+45)</li>
+            <li><span class="file-change mod">M</span> arm-web/.../inv/invOrderGoodsDetailInnerList.jsp (+16/-8)</li>
+            <li><span class="file-change mod">M</span> arm-web/.../inv/invWholesaleSalesDetailList.jsp (+18/-10)</li>
+            <li><span class="file-change mod">M</span> arm-web/.../directive/dialog_directive.js (+93)</li>
+            <li><span class="file-change mod">M</span> arm-web/.../css/style-cys.css (+134)</li>
+            <li><span class="file-change add">A</span> arm-web/.../template/goodsBasicDetailModal.html (+83, 新建)</li>
+        </ul>
+    </div>
+</div>
+
+<!-- ==================== 🔴 阻断项 ==================== -->
+<div class="section">
+    <div class="section-title">
+        <span class="badge" style="background:var(--red);">🔴</span> 阻断项（必须修改，-42 分）
+    </div>
+    <div class="section-body">
+
+        <!-- Block #1: 权限 -->
+        <div class="issue level-block">
+            <div class="issue-header">
+                <span class="issue-tag tag-block">阻断</span>
+                <span class="issue-title">接口权限粒度过粗，非商品管理角色无法查看商品弹窗</span>
+                <span class="issue-location">GoodsBaseController.java:523</span>
+                <span class="issue-category">安全</span>
+            </div>
+            <div class="issue-classify">问题分类：<span>安全</span></div>
+            <div class="issue-desc">
+                <p><code>queryGoodsInfoByCommonUi</code> 方法使用了 <code>@RequiresPermissions("goods:goodsBase:view")</code> 注解。</p>
+                <p>该接口是一个<strong>通用商品信息弹窗查询接口</strong>，调用方为 <code>goodsBasicDetail</code> 指令，已嵌入到：</p>
+                <ul>
+                    <li><strong>内部订货单</strong> — invOrderGoodsDetailInnerList.jsp 商品名称列</li>
+                    <li><strong>批发销售单</strong> — invWholesaleSalesDetailList.jsp 商品名称列</li>
+                </ul>
+                <p>如果用户有内部订货单/批发销售单的权限，但<strong>没有</strong>商品资料管理权限（<code>goods:goodsBase:view</code>），点击商品名称弹窗时接口返回 403，弹窗无法展示。</p>
+            </div>
+            <div class="issue-suggestion">
+                <strong>建议：</strong>去除 <code>@RequiresPermissions("goods:goodsBase:view")</code> 注解。该接口仅查询商品基本信息（名称、条码、图片等），不涉及编辑/删除，属于只读通用接口，无需商品资料管理权限。
+            </div>
+        </div>
+
+        <!-- Block #2: NPE -->
+        <div class="issue level-block">
+            <div class="issue-header">
+                <span class="issue-tag tag-block">阻断</span>
+                <span class="issue-title">NPE 风险：查询结果未做 null 判断</span>
+                <span class="issue-location">GoodsBaseController.java:528-529</span>
+                <span class="issue-category">健壮性</span>
+            </div>
+            <div class="issue-classify">问题分类：<span>健壮性</span></div>
+            <div class="issue-desc">
+                <p><code>goodsBaseService.getGoodsBasicInfo(goodsId)</code> 可能返回 <code>null</code>（商品不存在或 goodsId 为无效值），紧接着 <code>goodsDetailValue.setImage(...)</code> 会抛出 <strong>NullPointerException</strong>。</p>
+                <p>同文件中的 <code>getGoodsDetail</code> 方法（第 542 行）对此做了正确的 null 判断。</p>
+            </div>
+            <div class="code-block">
+<span class="code-line">  <span class="code-kw">public</span> <span class="code-kw">Object</span> <span class="code-fn">queryGoodsInfoByCommonUi</span>(<span class="code-kw">@RequestBody</span> String goodsId)</span>
+<span class="code-line">  {</span>
+<span class="code-line hl">      GoodsDetailValue goodsDetailValue = goodsBaseService.getGoodsBasicInfo(goodsId);</span>
+<span class="code-line hl">      goodsDetailValue.setImage(InvUtils.billImageOssUrl(goodsDetailValue.getImage()));  <span class="code-cm">// ← NPE if null</span></span>
+<span class="code-line">      Map&lt;String, Object&gt; map = <span class="code-kw">new</span> HashMap&lt;&gt;();</span>
+<span class="code-line">      map.put(<span class="code-str">"goodsInfo"</span>, goodsDetailValue);</span>
+<span class="code-line">      <span class="code-kw">return</span> map;</span>
+<span class="code-line">  }</span>
+<span class="code-line"></span>
+<span class="code-line">  <span class="code-cm">// 对比现有 getGoodsDetail 方法（第 542 行）—— 有 null 保护：</span></span>
+<span class="code-line">  GoodsDetailValue goodsDetailValue = goodsBaseService.getGoodsDetailValue(cond);</span>
+<span class="code-line">  <span class="code-kw">if</span> (goodsDetailValue != <span class="code-kw">null</span>) { <span class="code-cm">// ← 正确的做法</span></span>
+<span class="code-line">      <span class="code-cm">// ... 业务处理</span></span>
+<span class="code-line">  }</span>
+            </div>
+            <div class="issue-suggestion">
+                <strong>建议：</strong>在操作 goodsDetailValue 之前添加 null 检查：<code>if (goodsDetailValue == null) { return null; }</code>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ==================== 🟡 建议项 ==================== -->
+<div class="section">
+    <div class="section-title">
+        <span class="badge" style="background:var(--yellow);">🟡</span> 建议项（建议修改，-10 分）
+    </div>
+    <div class="section-body">
+
+        <!-- Warn #1: 注释错位 -->
+        <div class="issue level-warn">
+            <div class="issue-header">
+                <span class="issue-tag tag-warn">建议</span>
+                <span class="issue-title">注释错位：Javadoc 悬空在新方法上方</span>
+                <span class="issue-location">GoodsBaseController.java:514-518</span>
+                <span class="issue-category">注释规范</span>
+            </div>
+            <div class="issue-classify">问题分类：<span>注释规范</span></div>
+            <div class="issue-desc">
+                <p>第 514-517 行的 Javadoc（"根据商品信息id查询商品信息 用于查询和编辑"）原本属于 <code>getGoodsDetail</code> 方法（第 535 行）。新方法插入后，该注释被悬空在 <code>queryGoodsInfoByCommonUi</code> 上方，而 <code>getGoodsDetail</code> 方法失去了自己的注释，容易误导维护者。</p>
+            </div>
+            <div class="code-block">
+<span class="code-line"><span class="code-cm">/**</span></span>
+<span class="code-line"><span class="code-cm"> * 根据商品信息id查询商品信息  用于查询和编辑   ← 属于 getGoodsDetail，放错位置了</span></span>
+<span class="code-line"><span class="code-cm"> */</span></span>
+<span class="code-line"><span class="code-cm">/** 商品基本信息弹窗（轻量查询，仅查两张表） */</span></span>
+<span class="code-line"><span class="code-kw">public</span> <span class="code-kw">Object</span> <span class="code-fn">queryGoodsInfoByCommonUi</span>(...) { ... }</span>
+<span class="code-line">                                     <span class="code-cm">← getGoodsDetail 现在没有注释了</span></span>
+<span class="code-line"><span class="code-kw">public</span> <span class="code-kw">Object</span> <span class="code-fn">getGoodsDetail</span>(...) { ... }</span>
+            </div>
+            <div class="issue-suggestion">
+                <strong>建议：</strong>删除第 514-517 行悬空的旧注释。
+            </div>
+        </div>
+
+        <!-- Warn #2: 入参校验 -->
+        <div class="issue level-warn">
+            <div class="issue-header">
+                <span class="issue-tag tag-warn">建议</span>
+                <span class="issue-title">Controller 入参缺少基础校验</span>
+                <span class="issue-location">GoodsBaseController.java:526</span>
+                <span class="issue-category">健壮性</span>
+            </div>
+            <div class="issue-classify">问题分类：<span>健壮性</span></div>
+            <div class="issue-desc">
+                <p><code>@RequestBody String goodsId</code> 直接接收 POST body 作为 goodsId，未校验 null/空字符串。前端传入空 body 时会执行一次无效的数据库查询。</p>
+            </div>
+            <div class="issue-suggestion">
+                <strong>建议：</strong>添加参数校验：<code>if (StringUtils.isBlank(goodsId)) { return null; }</code>
+            </div>
+        </div>
+
+        <!-- Warn #3: 缓存 -->
+        <div class="issue level-warn">
+            <div class="issue-header">
+                <span class="issue-tag tag-warn">建议</span>
+                <span class="issue-title">弹窗无查询结果缓存，重复点击同一商品发起多次请求</span>
+                <span class="issue-location">dialog_directive.js:3457</span>
+                <span class="issue-category">性能</span>
+            </div>
+            <div class="issue-classify">问题分类：<span>性能</span></div>
+            <div class="issue-desc">
+                <p>每次点击商品名称都发起 HTTP POST 请求。虽然 <code>loading</code> 标志位防止了并发重复请求，但用户关闭弹窗后再次点击同一商品仍需重新请求。</p>
+            </div>
+            <div class="issue-suggestion">
+                <strong>建议：</strong>添加 <code>goodsInfoCache</code> 对象（key = goodsId），<code>openDialog</code> 中先检查缓存，命中则直接渲染，避免重复请求。
+            </div>
+        </div>
+
+        <!-- Warn #4: 上市日期未按系统参数控制 -->
+        <div class="issue level-warn">
+            <div class="issue-header">
+                <span class="issue-tag tag-warn">建议</span>
+                <span class="issue-title">上市日期未按系统参数【商品资料的上市日期是否精确到月日】控制</span>
+                <span class="issue-location">GoodsBaseController.java:526-533 & goodsBasicDetailModal.html:107-108</span>
+                <span class="issue-category">业务逻辑</span>
+            </div>
+            <div class="issue-classify">问题分类：<span>数据展示</span></div>
+            <div class="issue-desc">
+                <p>系统参数 <code>publish.date.precision.day.flag</code>（<code>GoodsParamConstants.PUBLISH_DATE_PRECISION_DAY_FLAG</code>）用于控制商品资料的上市日期显示格式：</p>
+                <ul>
+                    <li><strong>true</strong> 时：显示完整日期（年月日）</li>
+                    <li><strong>false</strong> 时：仅显示年份</li>
+                </ul>
+                <p>现有商品详情编辑页（<code>goodsDetailForm.jsp</code>、<code>goodsDetailFormMultiModal.jsp</code>、<code>goodsDetail4Order.jsp</code>）均通过 <code>publishDatePrecisionDayFlag</code> 控制输入方式（年份下拉 vs 日期选择器），且 <code>getGoodsDetail</code> 接口（第 562 行）在响应中返回了该参数。</p>
+                <p>但本次新增的<strong>商品基本信息弹窗</strong>存在两处遗漏：</p>
+                <ul>
+                    <li><strong>后端</strong>：<code>queryGoodsInfoByCommonUi</code> 方法（第 526-533 行）未返回 <code>publishDatePrecisionDayFlag</code></li>
+                    <li><strong>前端模板</strong>：<code>goodsBasicDetailModal.html</code> 第 108 行写死 <code>limitTo:10</code>（始终显示年月日），未根据系统参数控制显示格式</li>
+                </ul>
+            </div>
+            <div class="code-block">
+<span class="code-line"><span class="code-cm">&lt;!-- goodsBasicDetailModal.html:108 -- 始终显示完整年月日，未受系统参数控制 --&gt;</span></span>
+<span class="code-line hl">&lt;span title="{{goodsInfoModalInfo.publishDate | limitTo:10}}"&gt;</span>
+<span class="code-line hl">    {{goodsInfoModalInfo.publishDate | limitTo:10}}</span>
+<span class="code-line hl">&lt;/span&gt;</span>
+<span class="code-line"></span>
+<span class="code-line"><span class="code-cm">// GoodsBaseController.java:526-533 -- 未返回 publishDatePrecisionDayFlag</span></span>
+<span class="code-line hl"><span class="code-kw">public</span> <span class="code-kw">Object</span> <span class="code-fn">queryGoodsInfoByCommonUi</span>(<span class="code-kw">@RequestBody</span> String goodsId) {</span>
+<span class="code-line hl">    GoodsDetailValue goodsDetailValue = goodsBaseService.getGoodsBasicInfo(goodsId);</span>
+<span class="code-line hl">    goodsDetailValue.setImage(InvUtils.billImageOssUrl(goodsDetailValue.getImage()));</span>
+<span class="code-line hl">    Map&lt;String, Object&gt; map = <span class="code-kw">new</span> HashMap&lt;&gt;();</span>
+<span class="code-line hl">    map.put(<span class="code-str">"goodsInfo"</span>, goodsDetailValue);</span>
+<span class="code-line hl">    <span class="code-kw">return</span> map;  <span class="code-cm">// ← 缺少 publishDatePrecisionDayFlag</span></span>
+<span class="code-line hl">}</span>
+<span class="code-line"></span>
+<span class="code-line"><span class="code-cm">// 对比 getGoodsDetail（第 562 行）—— 正确返回了该参数：</span></span>
+<span class="code-line">map.put(<span class="code-str">"publishDatePrecisionDayFlag"</span>,</span>
+<span class="code-line">    SysParamsUtils.getBooleanSystemParam(</span>
+<span class="code-line">        GoodsParamConstants.PUBLISH_DATE_PRECISION_DAY_FLAG, <span class="code-kw">false</span>));</span>
+            </div>
+            <div class="issue-suggestion">
+                <strong>建议：</strong>
+                <ul>
+                    <li>后端：在 <code>queryGoodsInfoByCommonUi</code> 方法的返回 Map 中添加 <code>publishDatePrecisionDayFlag</code></li>
+                    <li>前端指令：在 <code>dialog_directive.js</code> 的 <code>openDialog</code> 回调中提取该参数并挂到 scope</li>
+                    <li>前端模板：根据 <code>publishDatePrecisionDayFlag</code> 判断上市日期显示格式 —— true 时显示 <code>limitTo:10</code>（年月日），false 时显示 <code>limitTo:4</code>（仅年份）</li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ==================== 🟢 可选项 ==================== -->
+<div class="section">
+    <div class="section-title">
+        <span class="badge" style="background:var(--green);">🟢</span> 可选项（优化方向，-0 分）
+    </div>
+    <div class="section-body">
+
+        <div class="issue level-opt">
+            <div class="issue-header">
+                <span class="issue-tag tag-opt">可选</span>
+                <span class="issue-title">CSS 颜色值硬编码，可考虑复用项目颜色变量</span>
+                <span class="issue-location">style-cys.css:425-558</span>
+                <span class="issue-category">代码整洁</span>
+            </div>
+            <div class="issue-classify">问题分类：<span>代码整洁</span></div>
+            <div class="issue-desc">
+                <p>新增 CSS 使用了硬编码颜色值（<code>#333</code>、<code>#666</code>、<code>#e5e5e5</code>、<code>#fafafa</code>、<code>#1f6fb2</code> 等），如有统一的颜色变量体系建议复用。</p>
+            </div>
+        </div>
+
+        <div class="issue level-opt">
+            <div class="issue-header">
+                <span class="issue-tag tag-opt">可选</span>
+                <span class="issue-title">Controller 返回类型可更明确</span>
+                <span class="issue-location">GoodsBaseController.java:526</span>
+                <span class="issue-category">代码整洁</span>
+            </div>
+            <div class="issue-classify">问题分类：<span>代码整洁</span></div>
+            <div class="issue-desc">
+                <p>返回类型声明为 <code>Object</code>，可改为 <code>Map&lt;String, Object&gt;</code> 增强可读性。但与同文件其他方法保持一致的 <code>Object</code> 也是合理的。</p>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ==================== 整体评价 ==================== -->
+<div class="section">
+    <div class="section-title">维度评分</div>
+    <div class="section-body">
+        <div class="dimension-grid">
+            <div class="dimension">
+                <div class="dimension-name">架构设计</div>
+                <span class="grade grade-good">良好</span>
+                <div style="font-size:12px;color:#888;margin-top:4px;">轻量查询仅查 2 表，前后端分离指令化复用</div>
+            </div>
+            <div class="dimension">
+                <div class="dimension-name">安全性</div>
+                <span class="grade grade-fix">需修复</span>
+                <div style="font-size:12px;color:#888;margin-top:4px;">权限粒度需调整，去除通用接口的商品视角权限</div>
+            </div>
+            <div class="dimension">
+                <div class="dimension-name">健壮性</div>
+                <span class="grade grade-fix">需修复</span>
+                <div style="font-size:12px;color:#888;margin-top:4px;">缺少 null 检查和入参校验</div>
+            </div>
+            <div class="dimension">
+                <div class="dimension-name">代码复用</div>
+                <span class="grade grade-good">良好</span>
+                <div style="font-size:12px;color:#888;margin-top:4px;">AngularJS 指令封装，两个页面复用</div>
+            </div>
+            <div class="dimension">
+                <div class="dimension-name">性能</div>
+                <span class="grade grade-good">良好</span>
+                <div style="font-size:12px;color:#888;margin-top:4px;">按需加载（点击触发），单次主键查询</div>
+            </div>
+            <div class="dimension">
+                <div class="dimension-name">CSS 规范性</div>
+                <span class="grade grade-good">良好</span>
+                <div style="font-size:12px;color:#888;margin-top:4px;">BEM 命名风格一致，含响应式适配</div>
+            </div>
+            <div class="dimension">
+                <div class="dimension-name">SQL 安全性</div>
+                <span class="grade grade-good">良好</span>
+                <div style="font-size:12px;color:#888;margin-top:4px;">全部参数化 #{}，无注入风险</div>
+            </div>
+            <div class="dimension">
+                <div class="dimension-name">注释规范</div>
+                <span class="grade grade-fix">需修复</span>
+                <div style="font-size:12px;color:#888;margin-top:4px;">悬空 Javadoc 注释需清理</div>
+            </div>
+            <div class="dimension">
+                <div class="dimension-name">业务逻辑完整性</div>
+                <span class="grade grade-fix">需修复</span>
+                <div style="font-size:12px;color:#888;margin-top:4px;">上市日期未按系统参数控制显示格式</div>
+            </div>
+        </div>
+
+        <div class="overall-rating">
+            <span class="rating-badge">修改后通过</span>
+            <div class="rating-desc">
+                <p><strong>核心问题：</strong>阻断项 #1（权限粒度过粗）是最严重的问题，会直接导致非商品管理角色的用户无法在订货单/批发单中查看商品弹窗，属于<strong>功能缺陷</strong>。</p>
+                <p style="margin-top:6px;">阻断项 #2（NPE）存在 500 错误风险，阻断项修复后再合并。</p>
+                <p style="margin-top:6px;">建议项 #4（上市日期未按系统参数控制）可能导致弹窗显示的上市日期与商品资料编辑页不一致，需要在后端补返回参数、前端根据参数控制显示格式。</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="footer">
+    报告生成时间：2026-07-10 &nbsp;|&nbsp; 评审工具：Claude Code &nbsp;|&nbsp; 项目：ARM Enterprise v8.39
+</div>
+
+</div>
+</body>
+</html>
